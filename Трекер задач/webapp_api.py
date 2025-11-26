@@ -1,4 +1,3 @@
-# webapp_api.py - API ДЛЯ MINI APP
 from flask import Flask, request, jsonify, send_from_directory
 import sqlite3
 import os
@@ -7,7 +6,7 @@ import json
 
 app = Flask(__name__)
 
-# Путь к базе данных
+
 DB_PATH = os.path.join(os.path.dirname(__file__), 'bot_users.db')
 
 def get_db_connection():
@@ -15,7 +14,6 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-# Обслуживание статических файлов
 @app.route('/webapp')
 def serve_webapp():
     return send_from_directory('webapp', 'index.html')
@@ -24,7 +22,6 @@ def serve_webapp():
 def serve_static(path):
     return send_from_directory('webapp', path)
 
-# API endpoints
 @app.route('/api/reminders', methods=['GET'])
 def get_reminders():
     user_id = request.args.get('user_id')
@@ -50,16 +47,14 @@ def add_reminder():
         time_str = data['time']
         repeat = data.get('repeat', 'ежедневно')
         is_habit = data.get('is_habit', False)
-        
-        # Проверка формата времени
+
         try:
             datetime.strptime(time_str, '%H:%M')
         except ValueError:
             return jsonify({"error": "Неверный формат времени"}), 400
         
         conn = get_db_connection()
-        
-        # Проверка на дубликаты
+
         existing = conn.execute(
             'SELECT id FROM reminders WHERE user_id = ? AND text = ? AND time = ? AND repeat = ?',
             (user_id, text, time_str, repeat)
@@ -68,8 +63,7 @@ def add_reminder():
         if existing:
             conn.close()
             return jsonify({"error": "Такое напоминание уже существует"}), 400
-        
-        # Добавление напоминания
+
         current_time = datetime.now()
         reminder_time = datetime.strptime(time_str, '%H:%M').replace(
             year=current_time.year, month=current_time.month, day=current_time.day
@@ -119,8 +113,6 @@ def complete_habit(reminder_id):
     current_time = datetime.now().time().strftime('%H:%M')
     
     conn = get_db_connection()
-    
-    # Проверяем, не выполнена ли уже привычка сегодня
     existing = conn.execute(
         'SELECT id FROM habit_completions WHERE user_id = ? AND reminder_id = ? AND completion_date = ?',
         (user_id, reminder_id, today)
@@ -130,13 +122,11 @@ def complete_habit(reminder_id):
         conn.close()
         return jsonify({"error": "Привычка уже выполнена сегодня"}), 400
     
-    # Добавляем запись о выполнении
     conn.execute(
         'INSERT INTO habit_completions (user_id, reminder_id, completion_date, completion_time, created_at) VALUES (?, ?, ?, ?, datetime("now"))',
         (user_id, reminder_id, today, current_time)
     )
     
-    # Обновляем статистику
     conn.execute(
         'UPDATE user_stats SET total_habits_completed = total_habits_completed + 1 WHERE user_id = ?',
         (user_id,)
@@ -161,8 +151,7 @@ def complete_habit(reminder_id):
     )
     
     conn.commit()
-    
-    # Получаем обновленные данные привычки
+
     habit = conn.execute(
         'SELECT text, time, habit_streak FROM reminders WHERE id = ?', (reminder_id,)
     ).fetchone()
@@ -182,28 +171,23 @@ def get_stats():
     today = datetime.now().date().isoformat()
     
     conn = get_db_connection()
-    
-    # Общее количество напоминаний
+
     total_reminders = conn.execute(
         'SELECT COUNT(*) FROM reminders WHERE user_id = ?', (user_id,)
     ).fetchone()[0]
-    
-    # Количество привычек
+
     habits_count = conn.execute(
         'SELECT COUNT(*) FROM reminders WHERE user_id = ? AND is_habit = 1', (user_id,)
     ).fetchone()[0]
     
-    # Выполнено сегодня
     completed_today = conn.execute(
         'SELECT COUNT(*) FROM habit_completions WHERE user_id = ? AND completion_date = ?', (user_id, today)
     ).fetchone()[0]
-    
-    # Лучший стрик
+
     best_streak = conn.execute(
         'SELECT MAX(habit_streak) FROM reminders WHERE user_id = ? AND is_habit = 1', (user_id,)
     ).fetchone()[0] or 0
     
-    # Активные привычки со статистикой
     habits = conn.execute('''
         SELECT r.id, r.text, r.time, r.habit_streak as streak,
                (SELECT COUNT(*) FROM habit_completions hc 
@@ -213,7 +197,6 @@ def get_stats():
         ORDER BY r.habit_streak DESC
     ''', (user_id,)).fetchall()
     
-    # Статистика за неделю
     week_completions = conn.execute('''
         SELECT COUNT(*) FROM habit_completions 
         WHERE user_id = ? AND completion_date >= date('now', '-7 days')
@@ -232,7 +215,6 @@ def get_stats():
 
 @app.route('/api/user/info', methods=['GET'])
 def get_user_info():
-    """Получение информации о пользователе для Mini App"""
     user_id = request.args.get('user_id')
     
     conn = get_db_connection()
@@ -249,16 +231,16 @@ def get_user_info():
     
     return jsonify(user_info)
 
-# Health check
+
 @app.route('/health', methods=['GET'])
 def health_check():
     return jsonify({"status": "healthy", "timestamp": datetime.now().isoformat()})
 
 if __name__ == '__main__':
-    # Создаем папку webapp если её нет
     if not os.path.exists('webapp'):
         os.makedirs('webapp')
     
     print("🚀 Веб-API запущено на http://0.0.0.0:5000")
     print("📱 Mini App доступно по /webapp")
+
     app.run(host='0.0.0.0', port=5000, debug=True)
