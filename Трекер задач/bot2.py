@@ -1,4 +1,3 @@
-# bot.py - ОСНОВНОЙ БОТ С MINI APP
 import telebot
 import sqlite3
 import datetime
@@ -13,10 +12,9 @@ import io
 from datetime import timedelta
 import urllib.parse
 
-BOT_TOKEN = "7137995506:AAGvOhvZUXfMO0JTWDQbpVmnQ9tjSClVtts"
+BOT_TOKEN = ""
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# Конфигурация
 class Config:
     STATS_DAYS_BACK = 7
     DAILY_REPORT_HOUR = 9
@@ -38,7 +36,6 @@ MOTIVATION_QUOTES = [
     "🌱 Каждая капля — инвестиция в твое здоровье. Пей и процветай!",
 ]
 
-# === МЕНЕДЖЕР БАЗЫ ДАННЫХ ===
 class DBManager:
     def __init__(self, db_path):
         self.db_path = db_path
@@ -122,7 +119,6 @@ class DBManager:
 
 DB_MANAGER = DBManager('bot_users.db')
 
-# === АДМИН-ФУНКЦИИ ===
 def is_admin(user_id):
     return user_id in Config.ADMIN_IDS
 
@@ -156,7 +152,6 @@ def broadcast_message(user_ids, message):
         time.sleep(0.1)
     return success, failed
 
-# === РАБОТА С БД ===
 def add_user(user_id, username):
     DB_MANAGER.execute("INSERT OR IGNORE INTO users (user_id, username, joined_at) VALUES (?, ?, ?)", 
               (user_id, username, datetime.datetime.now().isoformat()), commit=True)
@@ -1083,4 +1078,5 @@ if __name__ == "__main__":
         bot.polling(none_stop=True, interval=0, timeout=30)
     except Exception as e:
         print(f"❌ Ошибка: {e}")
+
         time.sleep(5)
